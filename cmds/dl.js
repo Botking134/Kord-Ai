@@ -19,7 +19,7 @@ cmd: "apk",
 }, async (m, text) => {
   try {
     if (!text) return await m.send("_*Provide a apk name*_")
-    var data = await m.axios(`https://api.kordai.biz.id/api/apk?q=${text}`)
+    var data = await m.axios(`https://api.kord.live/api/apk?q=${text}`)
     if (data.error) return await m.send("_Apk not found.._")
     var cap = `❑ Name: ${data.app_name}
     ❑ Package Name: ${data.package_name}
@@ -56,7 +56,7 @@ cmd: "apksearch",
     if (text.startsWith("dl--")) {
     var q = text.replace("dl--", "")
     await m.send("downloading app...")
-    var data = await m.axios(`https://api.kordai.biz.id/api/apkdl?id=${q}`)
+    var data = await m.axios(`https://api.kord.live/api/apkdl?id=${q}`)
     if (data.error) return await m.send("_Apk not found.._")
     var cap = `❑ Name: ${data.name}
     ❑ Package Name: ${data.package}
@@ -75,7 +75,7 @@ cmd: "apksearch",
     "document"
     );
     } else {
-    var info = await m.axios(`https://api.kordai.biz.id/api/apksearch?query=${text}`);
+    var info = await m.axios(`https://api.kord.live/api/apksearch?query=${text}`);
     const formatted = info.splice(0, 10).map(app => ({
     name: app.name,
     id: `apksearch dl--${app.id}`
@@ -106,7 +106,7 @@ kord({
   if (!text) return await m.send("_*Provide a movie name*_");
   let data;
   try {
-    data = await m.axios(`https://api.kordai.biz.id/api/subtitle?q=${text}`);
+    data = await m.axios(`https://api.kord.live/api/subtitle?q=${text}`);
   } catch (e) {
     return await m.send("_Failed to fetch subtitle data._");
   }
@@ -153,7 +153,7 @@ cmd: "subtitlesearch|subtitles",
     }
     
     await m.send("_Fetching available subtitle languages..._");
-    let data = await m.axios(`https://api.kordai.biz.id/api/subtiledl?q=${encodeURIComponent(pageUrl)}`);
+    let data = await m.axios(`https://api.kord.live/api/subtiledl?q=${encodeURIComponent(pageUrl)}`);
     
     if (!Array.isArray(data) || data.length === 0)
     return await m.send("_No subtitles found or server busy._");
@@ -175,19 +175,14 @@ cmd: "subtitlesearch|subtitles",
     "document"
     );
     } else {
-    const info = await m.axios(`https://api.kordai.biz.id/api/subtitlepage?q=${text}`);
+    const info = await m.axios(`https://api.kord.live/api/subtitlepage?q=${text}`);
     if (!Array.isArray(info) || info.length === 0) {
     return await m.send("_No subtitle results found._");
     }
     
     const formatted = info.slice(0, 10).map(res => ({
-    name: `${res.title} (${res.languagesSummary
-  } catch (e) {
-    console.log("cmd error", e)
-    return await m.sendErr(e)
-  }
-})`,
-      id: `apksearch dl--${encodeURIComponent(res.pageUrl)}`
+    name: `${res.title}`,
+      id: `subtitles dl--${encodeURIComponent(res.pageUrl)}`
     }));
 
     return await m.send({
@@ -570,7 +565,7 @@ kord({
                 var links = await extractUrlsFromString(lik);
                 const ttregex = /https:\/\/(?:www\.|vm\.|m\.|vt\.)?tiktok\.com\/(?:(@[\w.-]+\/(?:video|photo)\/\d+)|v\/\d+\.html|[\w-]+\/?)(?:\?.*)?$/
                 var link = links.find(url => ttregex.test(url));
-                const dta = await fetch(`https://api.kordai.biz.id/api/tik-img?url=${encodeURIComponent(link)}`);
+                const dta = await fetch(`https://api.kord.live/api/tik-img?url=${encodeURIComponent(link)}`);
                 const data = await dta.json();
                 if (!data.downloadableImages || data.downloadableImages.length === 0) {
                         return m.send("_No images found._");
@@ -636,7 +631,7 @@ kord({
                 
                 while (retries < maxRetries) {
                         fbD = await fb(link);
-                        vid = fbD?.data?.[0];
+                        vid = fbD?.videos
                         if (vid) break;
                         retries++;
                         await sleep(2000);
@@ -644,7 +639,7 @@ kord({
                 
                 if (!vid) return m.react("");
                 
-                const dl = vid.hdQualityLink || vid.normalQualityLink;
+                const dl = vid.hd.url || vid.sd.url
                 if (!dl) return m.react("");
                 
                 m.react("");
@@ -750,4 +745,46 @@ if (!lik) return await m.send("*provide a repo link!*")
    console.error("gitclone err", e)
    return await m.send("*error!*\nrepo might be private")
  }
+})
+
+
+kord({
+        cmd: "pint|pinterest",
+        desc: "downloads Pinterest videos/images",
+        fromMe: wtype,
+        type: "downloader",
+}, async (m, text) => {
+        try {
+                let lik
+                if (!text) {
+                        lik = m.quoted?.text
+                } else {
+                        lik = text
+                }
+                if (!lik) return m.send("_*reply/provide a valid Pinterest link!*_")
+                m.react("⏰")
+                var links = await extractUrlsFromString(lik)
+                const pinregex = /^(https?:\/\/)?(www\.)?(pin\.it|pinterest\.?com)\/.+$/
+                var link = links.find(url => pinregex.test(url))
+                if (!link) return m.send("_*No valid Pinterest URL found!*_")
+
+                const api = `https://api.kord.live/api/pinterest?url=${encodeURIComponent(link)}`
+                const res = await fetch(api)
+                const json = await res.json()
+                const data = json?.data?.data
+                if (!data) return m.react("")
+
+                const downloads = data.downloads || []
+                const video = downloads.find(v => v.format === "MP4")?.url
+                const thumb = downloads.find(v => v.format === "JPG")?.url
+                const dlUrl = video || thumb
+
+                if (!dlUrl) return m.react("")
+                m.react("")
+                return await m.client.sendFileUrl(m.chat, dlUrl, config().CAPTION, m)
+
+        } catch (e) {
+                console.error(e)
+                return await m.send(`${e}`)
+        }
 })
